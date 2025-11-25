@@ -47,6 +47,10 @@ app.post('/users', async (req, res) => {
     });
 
     console.log('✅ Firebase Auth user created:', userRecord.uid);
+    
+    // Set custom claims (role) for Storage/Firestore security rules
+    await admin.auth().setCustomUserClaims(userRecord.uid, { role: role });
+    console.log('✅ Set custom claims (role):', role);
 
     // 2. Create user document in Firestore
     const emailKey = sanitizeEmail(email);
@@ -72,25 +76,39 @@ app.post('/users', async (req, res) => {
     await db.collection('users').doc(userRecord.uid).set(userData);
     console.log('✅ Created user document with UID:', userRecord.uid);
 
-    // Create document in role-specific collection
+    // Create document in role-specific collection with full data
     const roleData = {
       name: name,
       email: email,
-      role: role
+      role: role,
+      uid: userRecord.uid,
+      disabled: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     if (role === 'teacher') {
+      // Create with emailKey as document ID
       await db.collection('teachers').doc(emailKey).set(roleData);
-      console.log('✅ Created teacher document:', emailKey);
+      console.log('✅ Created teacher document with email key:', emailKey);
+      // Also create with UID as document ID (for compatibility)
+      await db.collection('teachers').doc(userRecord.uid).set(roleData);
+      console.log('✅ Created teacher document with UID:', userRecord.uid);
     } else if (role === 'student') {
       await db.collection('students').doc(emailKey).set(roleData);
       console.log('✅ Created student document:', emailKey);
+      await db.collection('students').doc(userRecord.uid).set(roleData);
+      console.log('✅ Created student document with UID:', userRecord.uid);
     } else if (role === 'parent') {
       await db.collection('parents').doc(emailKey).set(roleData);
       console.log('✅ Created parent document:', emailKey);
+      await db.collection('parents').doc(userRecord.uid).set(roleData);
+      console.log('✅ Created parent document with UID:', userRecord.uid);
     } else if (role === 'assistant') {
       await db.collection('assistants').doc(emailKey).set(roleData);
       console.log('✅ Created assistant document:', emailKey);
+      await db.collection('assistants').doc(userRecord.uid).set(roleData);
+      console.log('✅ Created assistant document with UID:', userRecord.uid);
     }
 
     res.json({
@@ -119,7 +137,7 @@ app.patch('/users/:email/password', async (req, res) => {
     const db = admin.firestore();
     const userDoc = await db.collection('users').doc(emailKey).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -166,7 +184,7 @@ app.patch('/users/:email/disabled', async (req, res) => {
     const db = admin.firestore();
     const userDoc = await db.collection('users').doc(emailKey).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -209,7 +227,7 @@ app.delete('/users/:email', async (req, res) => {
     const db = admin.firestore();
     const userDoc = await db.collection('users').doc(emailKey).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -244,7 +262,7 @@ app.post('/users/:email/login', async (req, res) => {
     const db = admin.firestore();
     const userDoc = await db.collection('users').doc(emailKey).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -293,7 +311,7 @@ app.get('/users/:email/login-history', async (req, res) => {
     const db = admin.firestore();
     const userDoc = await db.collection('users').doc(emailKey).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'User not found' });
     }
 

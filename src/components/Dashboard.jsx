@@ -15,6 +15,7 @@ import { auth, db } from '../firebase/config'
 import { userService } from '../services/userService'
 import UserList from './UserList'
 import AddUserModal from './AddUserModal'
+import EditUserModal from './EditUserModal'
 import MigrateUsersButton from './MigrateUsersButton'
 import CreateMissingDocumentsButton from './CreateMissingDocumentsButton'
 import RemoveDuplicatesButton from './RemoveDuplicatesButton'
@@ -24,6 +25,8 @@ function Dashboard({ user }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
   const [activeRoleTab, setActiveRoleTab] = useState('all') // New state for role tabs
@@ -255,6 +258,17 @@ function Dashboard({ user }) {
     loadUsers()
   }
 
+  const handleEditUser = (user) => {
+    setEditingUser(user)
+    setShowEditModal(true)
+  }
+
+  const handleUserUpdated = () => {
+    setShowEditModal(false)
+    setEditingUser(null)
+    loadUsers()
+  }
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -361,6 +375,7 @@ function Dashboard({ user }) {
             onChangePassword={handleChangePassword}
             onDelete={handleDeleteUser}
             onViewLoginHistory={handleViewLoginHistory}
+            onEdit={handleEditUser}
           />
         )}
       </div>
@@ -369,6 +384,17 @@ function Dashboard({ user }) {
         <AddUserModal
           onClose={() => setShowAddModal(false)}
           onUserAdded={handleUserAdded}
+        />
+      )}
+
+      {showEditModal && editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => {
+            setShowEditModal(false)
+            setEditingUser(null)
+          }}
+          onUserUpdated={handleUserUpdated}
         />
       )}
 

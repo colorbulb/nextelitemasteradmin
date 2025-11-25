@@ -1,6 +1,6 @@
 import './UserList.css'
 
-function UserList({ users, onDisable, onResetPassword, onFixDocument, onChangePassword, onDelete, onViewLoginHistory }) {
+function UserList({ users, onDisable, onResetPassword, onFixDocument, onChangePassword, onDelete, onViewLoginHistory, onEdit }) {
   if (users.length === 0) {
     return (
       <div className="empty-state">
@@ -49,6 +49,15 @@ function UserList({ users, onDisable, onResetPassword, onFixDocument, onChangePa
               </td>
               <td>
                 <div className="action-buttons">
+                  {user.email && (
+                    <button
+                      onClick={() => onEdit(user)}
+                      className="action-btn edit-btn"
+                      title="Edit user"
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
                   <button
                     onClick={() => onDisable(user.email, user.disabled || false)}
                     className={`action-btn ${user.disabled ? 'enable-btn' : 'disable-btn'}`}

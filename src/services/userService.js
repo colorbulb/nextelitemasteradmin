@@ -185,6 +185,30 @@ export const userService = {
     }
   },
 
+  // Update user information (email, name, role)
+  async updateUser(originalEmail, newEmail, name, role) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(originalEmail)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: newEmail, name, role }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update user')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error updating user:', error)
+      handleFetchError(error, 'update user')
+      throw error
+    }
+  },
+
   // Check if backend is available
   checkBackendAvailable,
 }

@@ -77,6 +77,10 @@ app.post('/api/users', async (req, res) => {
     })
 
     console.log('✅ Firebase Auth user created:', userRecord.uid)
+    
+    // Set custom claims (role) for Storage/Firestore security rules
+    await admin.auth().setCustomUserClaims(userRecord.uid, { role: role })
+    console.log('✅ Set custom claims (role):', role)
 
     // 2. Create user document in Firestore
     const emailKey = sanitizeEmail(email)
@@ -102,25 +106,39 @@ app.post('/api/users', async (req, res) => {
     await db.collection('users').doc(userRecord.uid).set(userData)
     console.log('✅ Created user document with UID:', userRecord.uid)
 
-    // Create document in role-specific collection
+    // Create document in role-specific collection with full data
     const roleData = {
       name: name,
       email: email,
-      role: role
+      role: role,
+      uid: userRecord.uid,
+      disabled: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
 
     if (role === 'teacher') {
+      // Create with emailKey as document ID
       await db.collection('teachers').doc(emailKey).set(roleData)
-      console.log('✅ Created teacher document:', emailKey)
+      console.log('✅ Created teacher document with email key:', emailKey)
+      // Also create with UID as document ID (for compatibility)
+      await db.collection('teachers').doc(userRecord.uid).set(roleData)
+      console.log('✅ Created teacher document with UID:', userRecord.uid)
     } else if (role === 'student') {
       await db.collection('students').doc(emailKey).set(roleData)
       console.log('✅ Created student document:', emailKey)
+      await db.collection('students').doc(userRecord.uid).set(roleData)
+      console.log('✅ Created student document with UID:', userRecord.uid)
     } else if (role === 'parent') {
       await db.collection('parents').doc(emailKey).set(roleData)
       console.log('✅ Created parent document:', emailKey)
+      await db.collection('parents').doc(userRecord.uid).set(roleData)
+      console.log('✅ Created parent document with UID:', userRecord.uid)
     } else if (role === 'assistant') {
       await db.collection('assistants').doc(emailKey).set(roleData)
       console.log('✅ Created assistant document:', emailKey)
+      await db.collection('assistants').doc(userRecord.uid).set(roleData)
+      console.log('✅ Created assistant document with UID:', userRecord.uid)
     }
 
     res.json({
@@ -178,6 +196,117 @@ app.patch('/api/users/:email/password', async (req, res) => {
     res.json({ success: true })
   } catch (error) {
     console.error('❌ Error changing password:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Update user information (email, name, role)
+app.patch('/api/users/:email', async (req, res) => {
+  try {
+    const { email } = req.params
+    const { email: newEmail, name, role } = req.body
+
+    if (!name || !role) {
+      return res.status(400).json({ error: 'Name and role are required' })
+    }
+
+    if (!['student', 'teacher', 'parent', 'assistant'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be: student, teacher, parent, or assistant' })
+    }
+
+    const emailKey = sanitizeEmail(email)
+    const db = getDb()
+    const userDoc = await db.collection('users').doc(emailKey).get()
+
+    if (!userDoc.exists()) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const userData = userDoc.data()
+    const updateData = {
+      name,
+      role,
+      updatedAt: new Date().toISOString()
+    }
+
+    // If email is being changed, update it
+    if (newEmail && newEmail !== email) {
+      updateData.email = newEmail
+      
+      // If email changed, we need to create a new document with the new email key
+      const newEmailKey = sanitizeEmail(newEmail)
+      
+      // Update Firebase Auth email if UID exists
+      if (userData.uid) {
+        await admin.auth().updateUser(userData.uid, {
+          email: newEmail
+        })
+      }
+
+      // Create new document with new email key
+      await db.collection('users').doc(newEmailKey).set({
+        ...userData,
+        ...updateData
+      })
+
+      // Delete old document
+      await db.collection('users').doc(emailKey).delete()
+
+      // Also update UID document if it exists and is different
+      if (userData.uid && userData.uid !== emailKey) {
+        await db.collection('users').doc(userData.uid).update(updateData)
+      }
+
+      // Update role-specific collection
+      const roleCollection = `${role}s`
+      if (userData.role && userData.role !== role) {
+        // Remove from old role collection
+        const oldRoleCollection = `${userData.role}s`
+        try {
+          await db.collection(oldRoleCollection).doc(emailKey).delete()
+        } catch (e) {
+          // Ignore if doesn't exist
+        }
+      }
+      // Add to new role collection
+      await db.collection(roleCollection).doc(newEmailKey).set({
+        ...userData,
+        ...updateData
+      })
+
+      console.log(`✅ User updated (email changed): ${email} -> ${newEmail}`)
+    } else {
+      // Just update existing document
+      await db.collection('users').doc(emailKey).update(updateData)
+
+      // Also update UID document if it exists and is different
+      if (userData.uid && userData.uid !== emailKey) {
+        await db.collection('users').doc(userData.uid).update(updateData)
+      }
+
+      // Update role-specific collection
+      const roleCollection = `${role}s`
+      if (userData.role && userData.role !== role) {
+        // Remove from old role collection
+        const oldRoleCollection = `${userData.role}s`
+        try {
+          await db.collection(oldRoleCollection).doc(emailKey).delete()
+        } catch (e) {
+          // Ignore if doesn't exist
+        }
+      }
+      // Update or create in new role collection
+      await db.collection(roleCollection).doc(emailKey).set({
+        ...userData,
+        ...updateData
+      }, { merge: true })
+
+      console.log(`✅ User updated: ${email}`)
+    }
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('❌ Error updating user:', error)
     res.status(500).json({ error: error.message })
   }
 })
