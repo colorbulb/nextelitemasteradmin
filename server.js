@@ -112,10 +112,6 @@ app.post('/api/users', async (req, res) => {
     await db.collection('users').doc(emailKey).set(userData)
     console.log('✅ Created user document with email key:', emailKey)
 
-    // Also create with UID as fallback
-    await db.collection('users').doc(userRecord.uid).set(userData)
-    console.log('✅ Created user document with UID:', userRecord.uid)
-
     // Create document in role-specific collection with full data
     const roleData = {
       name: name,
@@ -141,24 +137,15 @@ app.post('/api/users', async (req, res) => {
       // Create with emailKey as document ID
       await db.collection('teachers').doc(emailKey).set(roleData)
       console.log('✅ Created teacher document with email key:', emailKey)
-      // Also create with UID as document ID (for compatibility)
-      await db.collection('teachers').doc(userRecord.uid).set(roleData)
-      console.log('✅ Created teacher document with UID:', userRecord.uid)
     } else if (role === 'student') {
       await db.collection('students').doc(emailKey).set(roleData)
       console.log('✅ Created student document:', emailKey)
-      await db.collection('students').doc(userRecord.uid).set(roleData)
-      console.log('✅ Created student document with UID:', userRecord.uid)
     } else if (role === 'parent') {
       await db.collection('parents').doc(emailKey).set(roleData)
       console.log('✅ Created parent document:', emailKey)
-      await db.collection('parents').doc(userRecord.uid).set(roleData)
-      console.log('✅ Created parent document with UID:', userRecord.uid)
     } else if (role === 'assistant') {
       await db.collection('assistants').doc(emailKey).set(roleData)
       console.log('✅ Created assistant document:', emailKey)
-      await db.collection('assistants').doc(userRecord.uid).set(roleData)
-      console.log('✅ Created assistant document with UID:', userRecord.uid)
     }
 
     res.json({
@@ -451,10 +438,6 @@ app.post('/api/users/:email/login', async (req, res) => {
     }
 
     await db.collection('users').doc(emailKey).update(updateData)
-
-    if (userData.uid && userData.uid !== emailKey) {
-      await db.collection('users').doc(userData.uid).update(updateData)
-    }
 
     res.json({ success: true, lastLogin: now })
   } catch (error) {
