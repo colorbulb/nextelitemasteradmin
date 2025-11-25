@@ -98,6 +98,16 @@ app.post('/api/users', async (req, res) => {
       loginHistory: []
     }
 
+    // Add role-specific fields to userData
+    if (role === 'parent') {
+      userData.phone = ''
+      userData.childEmails = []
+      userData.childIds = []
+    } else if (role === 'student') {
+      userData.classIds = []
+      userData.parentId = ''
+    }
+
     // Create document with email key (primary)
     await db.collection('users').doc(emailKey).set(userData)
     console.log('✅ Created user document with email key:', emailKey)
@@ -115,6 +125,16 @@ app.post('/api/users', async (req, res) => {
       disabled: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
+    }
+
+    // Add role-specific fields
+    if (role === 'parent') {
+      roleData.phone = ''
+      roleData.childEmails = []
+      roleData.childIds = []
+    } else if (role === 'student') {
+      roleData.classIds = []
+      roleData.parentId = ''
     }
 
     if (role === 'teacher') {

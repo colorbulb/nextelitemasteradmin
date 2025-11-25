@@ -19,6 +19,7 @@ import EditUserModal from './EditUserModal'
 import MigrateUsersButton from './MigrateUsersButton'
 import CreateMissingDocumentsButton from './CreateMissingDocumentsButton'
 import RemoveDuplicatesButton from './RemoveDuplicatesButton'
+import CleanupRoleCollectionsButton from './CleanupRoleCollectionsButton'
 import './Dashboard.css'
 
 function Dashboard({ user }) {
@@ -307,6 +308,7 @@ function Dashboard({ user }) {
           <MigrateUsersButton onMigrationComplete={loadUsers} />
           <CreateMissingDocumentsButton onComplete={loadUsers} />
           <RemoveDuplicatesButton onComplete={loadUsers} />
+          <CleanupRoleCollectionsButton onComplete={loadUsers} />
         </div>
         
         {/* Role Tabs */}

@@ -18,6 +18,67 @@ function sanitizeEmail(email) {
   return email.replace(/[@.]/g, '_');
 }
 
+// Helper function to record login (reusable)
+async function recordUserLogin(email, uid) {
+  try {
+    const emailKey = sanitizeEmail(email);
+    const db = admin.firestore();
+    const userDoc = await db.collection('users').doc(emailKey).get();
+
+    // If email key doesn't exist, try UID
+    if (!userDoc.exists && uid) {
+      const uidDoc = await db.collection('users').doc(uid).get();
+      if (uidDoc.exists) {
+        const userData = uidDoc.data();
+        if (userData.email) {
+          // Use the email from the document
+          return await recordUserLogin(userData.email, uid);
+        }
+      }
+    }
+
+    if (!userDoc.exists) {
+      console.warn('⚠️ User document not found for login tracking:', email);
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const loginEntry = {
+      timestamp: now,
+      uid: uid
+    };
+
+    // Get existing login history
+    const userData = userDoc.data();
+    const loginHistory = userData.loginHistory || [];
+    
+    // Add new login (keep last 50 entries)
+    loginHistory.unshift(loginEntry);
+    if (loginHistory.length > 50) {
+      loginHistory.pop();
+    }
+
+    // Update Firestore
+    const updateData = {
+      lastLogin: now,
+      loginHistory: loginHistory,
+      updatedAt: now
+    };
+
+    await db.collection('users').doc(emailKey).update(updateData);
+
+    if (userData.uid && userData.uid !== emailKey) {
+      await db.collection('users').doc(userData.uid).update(updateData);
+    }
+
+    console.log('✅ Login recorded for:', email);
+    return { success: true, lastLogin: now };
+  } catch (error) {
+    console.error('❌ Error recording login:', error);
+    return null;
+  }
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nextelite-backend', timestamp: new Date().toISOString() });
@@ -68,6 +129,16 @@ app.post('/users', async (req, res) => {
       loginHistory: []
     };
 
+    // Add role-specific fields to userData
+    if (role === 'parent') {
+      userData.phone = '';
+      userData.childEmails = [];
+      userData.childIds = [];
+    } else if (role === 'student') {
+      userData.classIds = [];
+      userData.parentId = '';
+    }
+
     // Create document with email key (primary)
     await db.collection('users').doc(emailKey).set(userData);
     console.log('✅ Created user document with email key:', emailKey);
@@ -86,6 +157,16 @@ app.post('/users', async (req, res) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // Add role-specific fields
+    if (role === 'parent') {
+      roleData.phone = '';
+      roleData.childEmails = [];
+      roleData.childIds = [];
+    } else if (role === 'student') {
+      roleData.classIds = [];
+      roleData.parentId = '';
+    }
 
     if (role === 'teacher') {
       // Create with emailKey as document ID
@@ -258,44 +339,13 @@ app.post('/users/:email/login', async (req, res) => {
     const { email } = req.params;
     const { uid } = req.body;
 
-    const emailKey = sanitizeEmail(email);
-    const db = admin.firestore();
-    const userDoc = await db.collection('users').doc(emailKey).get();
-
-    if (!userDoc.exists) {
+    const result = await recordUserLogin(email, uid);
+    
+    if (!result) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const now = new Date().toISOString();
-    const loginEntry = {
-      timestamp: now,
-      uid: uid
-    };
-
-    // Get existing login history
-    const userData = userDoc.data();
-    const loginHistory = userData.loginHistory || [];
-    
-    // Add new login (keep last 50 entries)
-    loginHistory.unshift(loginEntry);
-    if (loginHistory.length > 50) {
-      loginHistory.pop();
-    }
-
-    // Update Firestore
-    const updateData = {
-      lastLogin: now,
-      loginHistory: loginHistory,
-      updatedAt: now
-    };
-
-    await db.collection('users').doc(emailKey).update(updateData);
-
-    if (userData.uid && userData.uid !== emailKey) {
-      await db.collection('users').doc(userData.uid).update(updateData);
-    }
-
-    res.json({ success: true, lastLogin: now });
+    res.json(result);
   } catch (error) {
     console.error('❌ Error recording login:', error);
     res.status(500).json({ error: error.message });
@@ -325,6 +375,10 @@ app.get('/users/:email/login-history', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Note: Firebase Auth doesn't have a direct "user signed in" trigger.
+// The frontend app should call the /users/:email/login endpoint when users sign in.
+// This is already implemented in the admin portal, and should be added to the NextElite app.
 
 // Export as Cloud Function (1st Gen)
 // Using functions.https.onRequest explicitly to ensure 1st Gen
