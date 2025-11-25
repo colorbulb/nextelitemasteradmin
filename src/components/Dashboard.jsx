@@ -26,6 +26,7 @@ function Dashboard({ user }) {
   const [showAddModal, setShowAddModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
+  const [activeRoleTab, setActiveRoleTab] = useState('all') // New state for role tabs
   const [showLoginHistory, setShowLoginHistory] = useState(false)
   const [loginHistoryData, setLoginHistoryData] = useState(null)
   const [loginHistoryEmail, setLoginHistoryEmail] = useState('')
@@ -142,7 +143,12 @@ function Dashboard({ user }) {
       setShowLoginHistory(true)
     } catch (error) {
       console.error('Error getting login history:', error)
-      alert('Failed to get login history: ' + error.message)
+      // Check if it's a 404 (user not found) or other error
+      if (error.message.includes('not found') || error.message.includes('404')) {
+        alert(`User document not found for ${userEmail}. Please use "Fix Doc" button to create the Firestore document first.`)
+      } else {
+        alert('Failed to get login history: ' + error.message)
+      }
     }
   }
 
@@ -243,10 +249,20 @@ function Dashboard({ user }) {
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.uid?.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchesRole = filterRole === 'all' || user.role === filterRole
+    // Use activeRoleTab instead of filterRole for tab-based filtering
+    const matchesRole = activeRoleTab === 'all' || user.role === activeRoleTab
     
     return matchesSearch && matchesRole
   })
+
+  // Count users by role for tab badges
+  const roleCounts = {
+    all: users.length,
+    teacher: users.filter(u => u.role === 'teacher').length,
+    assistant: users.filter(u => u.role === 'assistant').length,
+    student: users.filter(u => u.role === 'student').length,
+    parent: users.filter(u => u.role === 'parent').length,
+  }
 
   return (
     <div className="dashboard">
@@ -267,6 +283,40 @@ function Dashboard({ user }) {
           <RemoveDuplicatesButton onComplete={loadUsers} />
         </div>
         
+        {/* Role Tabs */}
+        <div className="role-tabs-container">
+          <button
+            onClick={() => setActiveRoleTab('all')}
+            className={`role-tab ${activeRoleTab === 'all' ? 'active' : ''}`}
+          >
+            All <span className="role-count">({roleCounts.all})</span>
+          </button>
+          <button
+            onClick={() => setActiveRoleTab('teacher')}
+            className={`role-tab ${activeRoleTab === 'teacher' ? 'active' : ''}`}
+          >
+            Teachers <span className="role-count">({roleCounts.teacher})</span>
+          </button>
+          <button
+            onClick={() => setActiveRoleTab('assistant')}
+            className={`role-tab ${activeRoleTab === 'assistant' ? 'active' : ''}`}
+          >
+            Assistants <span className="role-count">({roleCounts.assistant})</span>
+          </button>
+          <button
+            onClick={() => setActiveRoleTab('student')}
+            className={`role-tab ${activeRoleTab === 'student' ? 'active' : ''}`}
+          >
+            Students <span className="role-count">({roleCounts.student})</span>
+          </button>
+          <button
+            onClick={() => setActiveRoleTab('parent')}
+            className={`role-tab ${activeRoleTab === 'parent' ? 'active' : ''}`}
+          >
+            Parents <span className="role-count">({roleCounts.parent})</span>
+          </button>
+        </div>
+
         <div className="dashboard-toolbar">
           <div className="search-filters">
             <input
@@ -276,17 +326,6 @@ function Dashboard({ user }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
             />
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="role-filter"
-            >
-              <option value="all">All Roles</option>
-              <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
-              <option value="parent">Parent</option>
-              <option value="assistant">Assistant</option>
-            </select>
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
