@@ -1,0 +1,44 @@
+.create-missing-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.create-missing-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  align-self: flex-start;
+}
+
+.create-missing-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.create-missing-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-missing-status {
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.create-missing-status.creating {
+  background-color: #fff3e0;
+  color: #e65100;
+  border-color: #ffe0b2;
+}
+

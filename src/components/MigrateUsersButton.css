@@ -1,0 +1,44 @@
+.migrate-users-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.migrate-button {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  align-self: flex-start;
+}
+
+.migrate-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.migrate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.migrate-status {
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.migrate-status.migrating {
+  background-color: #fff3e0;
+  color: #e65100;
+  border-color: #ffe0b2;
+}
+
