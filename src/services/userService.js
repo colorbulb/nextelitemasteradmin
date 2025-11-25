@@ -133,16 +133,25 @@ export const userService = {
   // Get user login history
   async getLoginHistory(email) {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(email)}/login-history`)
+      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(email)}/login-history`, {
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      })
 
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(error.error || 'Failed to get login history')
       }
 
       return await response.json()
     } catch (error) {
       console.error('Error getting login history:', error)
+      // Enhance error message for connection issues
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Failed to fetch - Backend server may not be running')
+      }
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout - Backend server may not be responding')
+      }
       throw error
     }
   },

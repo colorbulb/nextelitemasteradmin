@@ -1,4 +1,4 @@
-// Firebase Cloud Functions for user management
+// Firebase Cloud Functions for user management (1st Generation)
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const express = require('express');
@@ -71,6 +71,27 @@ app.post('/users', async (req, res) => {
     // Also create with UID as fallback
     await db.collection('users').doc(userRecord.uid).set(userData);
     console.log('✅ Created user document with UID:', userRecord.uid);
+
+    // Create document in role-specific collection
+    const roleData = {
+      name: name,
+      email: email,
+      role: role
+    };
+
+    if (role === 'teacher') {
+      await db.collection('teachers').doc(emailKey).set(roleData);
+      console.log('✅ Created teacher document:', emailKey);
+    } else if (role === 'student') {
+      await db.collection('students').doc(emailKey).set(roleData);
+      console.log('✅ Created student document:', emailKey);
+    } else if (role === 'parent') {
+      await db.collection('parents').doc(emailKey).set(roleData);
+      console.log('✅ Created parent document:', emailKey);
+    } else if (role === 'assistant') {
+      await db.collection('assistants').doc(emailKey).set(roleData);
+      console.log('✅ Created assistant document:', emailKey);
+    }
 
     res.json({
       success: true,
@@ -287,6 +308,7 @@ app.get('/users/:email/login-history', async (req, res) => {
   }
 });
 
-// Export as Cloud Function
+// Export as Cloud Function (1st Gen)
+// Using functions.https.onRequest explicitly to ensure 1st Gen
 exports.api = functions.https.onRequest(app);
 

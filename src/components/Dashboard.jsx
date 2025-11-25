@@ -143,11 +143,23 @@ function Dashboard({ user }) {
       setShowLoginHistory(true)
     } catch (error) {
       console.error('Error getting login history:', error)
+      
+      // Check for connection errors (backend not running)
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        if (isLocalhost) {
+          alert(`Backend server is not running!\n\nTo fix:\n1. Open a terminal\n2. Run: cd nextelitebackend && npm run server\n3. Keep it running\n4. Try again`)
+        } else {
+          alert(`Cannot connect to backend server.\n\nIf you're in production, make sure Cloud Functions are deployed.\n\nError: ${error.message}`)
+        }
+        return
+      }
+      
       // Check if it's a 404 (user not found) or other error
       if (error.message.includes('not found') || error.message.includes('404')) {
-        alert(`User document not found for ${userEmail}. Please use "Fix Doc" button to create the Firestore document first.`)
+        alert(`User document not found for ${userEmail}.\n\nPlease use "🔧 Fix Doc" button to create the Firestore document first.`)
       } else {
-        alert('Failed to get login history: ' + error.message)
+        alert(`Failed to get login history: ${error.message}`)
       }
     }
   }
